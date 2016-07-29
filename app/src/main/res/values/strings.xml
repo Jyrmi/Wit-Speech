@@ -1,6 +1,3 @@
 <resources>
     <string name="app_name">Wit Speech</string>
-    <string name="btnStart">start</string>
-    <string name="btnStop">stop</string>
-    <string name="bufferContent">none</string>
 </resources>

@@ -1,114 +1,133 @@
 package tree.witspeech;
 
-import java.io.IOException;
-import java.net.DatagramPacket;
-import java.net.DatagramSocket;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
-
-import android.app.Activity;
-import android.media.AudioFormat;
-import android.media.AudioRecord;
-import android.media.MediaRecorder;
 import android.os.Bundle;
+import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
+import android.speech.RecognizerIntent;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.View;
-import android.view.View.OnClickListener;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
+import android.widget.ListView;
 import android.widget.TextView;
 
+import java.util.ArrayList;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.List;
+
+import com.android.volley.AuthFailureError;
+import com.android.volley.RequestQueue;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.Response;
+import com.android.volley.Request;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.Volley;
+/**
+ * A very simple application to handle Voice Recognition intents
+ * and display the results
+ */
 public class MainActivity extends AppCompatActivity {
-    private Button startButton,stopButton;
-    private TextView bufferContent;
 
-    public byte[] buffer;
-    public static DatagramSocket socket;
-    private int port=50005;
+    private static final int REQUEST_CODE = 1234;
+    private Button speakButton;
+    private ListView wordsList;
+    private TextView mTextView;
 
-    AudioRecord recorder;
+    RequestQueue queue;
+    String url;
 
-    private int sampleRate = 16000 ; // 44100 for music
-    private int channelConfig = AudioFormat.CHANNEL_CONFIGURATION_MONO;
-    private int audioFormat = AudioFormat.ENCODING_PCM_16BIT;
-    int minBufSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat);
-    private boolean status = true;
-
-
+    /**
+     * Called with the activity is first created.
+     */
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        startButton = (Button)findViewById(R.id.btnStart);
-        stopButton = (Button)findViewById(R.id.btnStop);
+        speakButton = (Button) findViewById(R.id.speakButton);
+        wordsList = (ListView) findViewById(R.id.list);
+        mTextView = (TextView) findViewById(R.id.volley_request);
 
-        startButton.setOnClickListener(startListener);
-        stopButton.setOnClickListener(stopListener);
+        // Disable button if no recognition service is present
+        PackageManager pm = getPackageManager();
+        List<ResolveInfo> activities = pm.queryIntentActivities(
+                new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH), 0);
+        if (activities.size() == 0)
+        {
+            speakButton.setEnabled(false);
+            speakButton.setText("Recognizer not present");
+        }
+
+        queue = Volley.newRequestQueue(this);
     }
 
-    private final OnClickListener stopListener = new OnClickListener() {
-        @Override
-        public void onClick(View arg0) {
-            status = false;
-            recorder.release();
-            Log.d("VS","Recorder released");
-        }
-    };
-
-    private final OnClickListener startListener = new OnClickListener() {
-        @Override
-        public void onClick(View arg0) {
-            status = true;
-            startStreaming();
-        }
-    };
-
-    public void startStreaming() {
-        Thread streamThread = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    bufferContent = (TextView)findViewById(R.id.buffer);
-
-                    DatagramSocket socket = new DatagramSocket();
-                    Log.d("VS", "Socket Created");
-
-                    byte[] buffer = new byte[minBufSize];
-
-                    Log.d("VS","Buffer created of size " + minBufSize);
-                    DatagramPacket packet;
-
-                    final InetAddress destination = InetAddress.getByName("127.0.0.1");
-                    Log.d("VS", "Address retrieved");
-
-                    recorder = new AudioRecord(MediaRecorder.AudioSource.MIC,sampleRate,channelConfig,audioFormat,minBufSize*10);
-                    Log.d("VS", "Recorder initialized");
-
-                    recorder.startRecording();
-
-                    while(status == true) {
-                        //reading data from MIC into buffer
-                        minBufSize = recorder.read(buffer, 0, buffer.length);
-
-                        // SHOW THE BUFFER IN A TEXTVIEW IN APP
-//                        bufferContent.setText(buffer.toString());
-
-                        //putting buffer in the packet
-//                        packet = new DatagramPacket (buffer,buffer.length,destination,port);
-//                        socket.send(packet);
-//                        System.out.println("MinBufferSize: " +minBufSize);
-                        System.out.println(buffer.toString());
+    /**
+     * Create and return an HTTP request
+     */
+    public StringRequest createRequest(String url) {
+        StringRequest stringRequest = new StringRequest(Request.Method.GET, url,
+                new Response.Listener<String>() {
+                    @Override
+                    public void onResponse(String response) {
+                        // Display the first 500 characters of the response string.
+                        mTextView.setText(response);
                     }
-                } catch(UnknownHostException e) {
-                    Log.e("VS", "UnknownHostException");
-                } catch (IOException e) {
-                    e.printStackTrace();
-                    Log.e("VS", "IOException");
-                }
+                }, new Response.ErrorListener() {
+            @Override
+            public void onErrorResponse(VolleyError error) {
+                mTextView.setText("That didn't work!");
             }
+        })
+            {
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                Map<String, String>  params = new HashMap<String, String>();
+                params.put("Authorization", "Bearer XDEWDCUXFI25IF7LFJEVJ2N4NI4INODT");
 
-        });
-        streamThread.start();
+                return params;
+            }
+        };
+
+        return stringRequest;
+    }
+
+    /**
+     * Handle the action of the button being clicked
+     */
+    public void speakButtonClicked(View v) {
+        startVoiceRecognitionActivity();
+    }
+
+    /**
+     * Fire an intent to start the voice recognition activity.
+     */
+    private void startVoiceRecognitionActivity() {
+        Intent intent = new Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH);
+        intent.putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL,
+                RecognizerIntent.LANGUAGE_MODEL_FREE_FORM);
+        intent.putExtra(RecognizerIntent.EXTRA_PROMPT, "Voice recognition Demo...");
+        startActivityForResult(intent, REQUEST_CODE);
+    }
+
+    /**
+     * Handle the results from the voice recognition activity.
+     */
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        if (requestCode == REQUEST_CODE && resultCode == RESULT_OK) {
+            // Populate the wordsList with the String values the recognition engine thought it heard
+            ArrayList<String> matches = data.getStringArrayListExtra(
+                    RecognizerIntent.EXTRA_RESULTS);
+            wordsList.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1,
+                    matches));
+
+            // Send an HTTP request to Wit
+            url ="https://api.wit.ai/message?q=";
+            url += matches.get(0).replaceAll(" ", "%20");
+            queue.add(createRequest(url));
+        }
+        super.onActivityResult(requestCode, resultCode, data);
     }
 }
