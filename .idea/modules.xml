@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/WitSpeech.iml" filepath="$PROJECT_DIR$/WitSpeech.iml" />
+      <module fileurl="file://$PROJECT_DIR$/Wit-Speech.iml" filepath="$PROJECT_DIR$/Wit-Speech.iml" />
       <module fileurl="file://$PROJECT_DIR$/app/app.iml" filepath="$PROJECT_DIR$/app/app.iml" />
     </modules>
   </component>

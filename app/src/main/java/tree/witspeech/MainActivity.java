@@ -124,8 +124,9 @@ public class MainActivity extends AppCompatActivity {
                     matches));
 
             // Send an HTTP request to Wit
-            url ="https://api.wit.ai/message?q=";
-            url += matches.get(0).replaceAll(" ", "%20");
+            url = "https://stark-castle-46988.herokuapp.com/";
+//            url ="https://api.wit.ai/message?q=";
+//            url += matches.get(0).replaceAll(" ", "%20");
             queue.add(createRequest(url));
         }
         super.onActivityResult(requestCode, resultCode, data);
